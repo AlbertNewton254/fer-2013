@@ -99,7 +99,7 @@ Loss and F1 score curves across training epochs:
 
 ## Next Questions
 
-- Can we use self-attention to improve our results?
+- What can we do to improve our results?
 
 ## License
 
