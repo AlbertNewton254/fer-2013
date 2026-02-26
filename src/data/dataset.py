@@ -5,6 +5,8 @@ FER2013Dataset and utilities for data loading and preprocessing.
 """
 
 from pathlib import Path
+import math
+import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import pandas as pd
@@ -23,6 +25,37 @@ IMAGE_SIZE = CONFIG["data"]["image_size"]
 NORM_MEAN = CONFIG["data"]["normalize"]["mean"]
 NORM_STD = CONFIG["data"]["normalize"]["std"]
 AUGMENTATION = CONFIG["data"]["augmentation"]
+GABOR_CONFIG = CONFIG["data"].get("gabor", {})
+
+
+def _build_gabor_kernels() -> list[np.ndarray]:
+    if not GABOR_CONFIG.get("enabled", False):
+        return []
+
+    ksize = int(GABOR_CONFIG["kernel_size"])
+    sigma = float(GABOR_CONFIG["sigma"])
+    lambd = float(GABOR_CONFIG["lambda"])
+    gamma = float(GABOR_CONFIG["gamma"])
+    psi = float(GABOR_CONFIG["psi"])
+    num_orientations = int(GABOR_CONFIG["num_orientations"])
+
+    kernels: list[np.ndarray] = []
+    for idx in range(num_orientations):
+        theta = (math.pi * idx) / num_orientations
+        kernel = cv2.getGaborKernel(
+            ksize=(ksize, ksize),
+            sigma=sigma,
+            theta=theta,
+            lambd=lambd,
+            gamma=gamma,
+            psi=psi,
+            ktype=cv2.CV_32F,
+        )
+        kernels.append(kernel)
+    return kernels
+
+
+GABOR_KERNELS = _build_gabor_kernels()
 
 
 train_transform = T.Compose([
@@ -41,6 +74,12 @@ train_transform = T.Compose([
     ),
     T.ToTensor(),
     T.Normalize(mean=NORM_MEAN, std=NORM_STD),
+    T.RandomErasing(
+        p=AUGMENTATION.get("random_erasing_p", 0.25),
+        scale=tuple(AUGMENTATION.get("random_erasing_scale", [0.02, 0.2])),
+        ratio=tuple(AUGMENTATION.get("random_erasing_ratio", [0.3, 3.3])),
+        value=AUGMENTATION.get("random_erasing_value", "random"),
+    ),
 ])
 
 val_test_transform = T.Compose([
@@ -83,6 +122,10 @@ class FER2013Dataset(Dataset):
             cls: idx
             for idx, cls in enumerate(sorted(self.data["emotion"].unique()))
         }
+        self.gabor_enabled = bool(GABOR_CONFIG.get("enabled", False)) and bool(GABOR_KERNELS)
+        self.include_original = bool(GABOR_CONFIG.get("include_original", True))
+        gabor_channels = len(GABOR_KERNELS) if self.gabor_enabled else 0
+        self.input_channels = gabor_channels + (1 if (self.include_original or not self.gabor_enabled) else 0)
 
     def _load_data(self) -> pd.DataFrame:
         split_dir = self.data_dir / self.split
@@ -108,6 +151,26 @@ class FER2013Dataset(Dataset):
             raise ValueError(f"Failed to load image: {row['path']}")
         if self.transform:
             image = self.transform(image)
+        else:
+            image = torch.from_numpy(image).unsqueeze(0).float() / 255.0
+
+        if self.gabor_enabled:
+            base_image = image[0]
+            base_image = base_image * float(NORM_STD[0]) + float(NORM_MEAN[0])
+            base_np = base_image.detach().cpu().numpy().astype(np.float32)
+
+            response_tensors: list[torch.Tensor] = []
+            for kernel in GABOR_KERNELS:
+                response = cv2.filter2D(base_np, cv2.CV_32F, kernel)
+                response = (response - response.mean()) / (response.std() + 1e-6)
+                response_tensors.append(torch.from_numpy(response))
+
+            channels: list[torch.Tensor] = []
+            if self.include_original:
+                channels.append(image[0])
+            channels.extend(response_tensors)
+            image = torch.stack(channels, dim=0)
+
         label = torch.tensor(self.class_to_idx[row["emotion"]], dtype=torch.long)
         return image, label
 

@@ -2,7 +2,7 @@ data:
   raw_data_dir: data/raw
   kaggle_dataset: msambare/fer2013
   train_split: train
-  val_split: test
+  test_split: test
   image_size: 48
   normalize:
     mean: [0.5]
@@ -14,6 +14,19 @@ data:
     affine_scale: [0.92, 1.08]
     brightness: 0.15
     contrast: 0.15
+    random_erasing_p: 0.25
+    random_erasing_scale: [0.02, 0.2]
+    random_erasing_ratio: [0.3, 3.3]
+    random_erasing_value: random
+  gabor:
+    enabled: true
+    include_original: true
+    kernel_size: 9
+    sigma: 4.0
+    lambda: 8.0
+    gamma: 0.5
+    psi: 0.0
+    num_orientations: 8
 
 dataloader:
   batch_size: 32
@@ -31,6 +44,8 @@ loss:
 
 training:
   epochs: 50
+  val_ratio: 0.2
+  random_state: 42
   optimizer:
     lr: 0.001
   scheduler:
@@ -39,12 +54,17 @@ training:
     factor: 0.5
 
 callbacks:
-  monitor: loss
+  monitor: val_f1
+  lr_scheduler_monitor: val_loss
   early_stopping:
     patience: 5
     min_delta: 0.0
-    mode: min
+    mode: max
   checkpoint:
-    filepath: checkpoints/best_model.pt
-    mode: min
+    root_dir: checkpoints
+    run_prefix: checkpoint_
+    best_filename: best_model.pt
+    periodic_every_epochs: 10
+    periodic_filename: checkpoint_epoch_{epoch:04d}.pt
+    mode: max
     verbose: true
