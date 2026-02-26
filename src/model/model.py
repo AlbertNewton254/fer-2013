@@ -7,8 +7,9 @@ CNN architecture for facial expression recognition (FER2013).
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from src.config import get_config
 
-NUM_CLASSES = 7
+NUM_CLASSES = get_config()["model"]["num_classes"]
 
 
 class FER2013CNN(nn.Module):
