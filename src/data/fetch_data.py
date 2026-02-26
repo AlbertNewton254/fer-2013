@@ -5,10 +5,13 @@ Downloads the FER2013 dataset from Kaggle and saves it to data/raw/.
 """
 
 from pathlib import Path
+from src.config import get_config
 
-RAW_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
+CONFIG = get_config()
 
-DATASET_NAME = "msambare/fer2013"
+RAW_DATA_DIR = Path(__file__).resolve().parents[2] / CONFIG["data"]["raw_data_dir"]
+
+DATASET_NAME = CONFIG["data"]["kaggle_dataset"]
 
 
 def fetch_data() -> None:

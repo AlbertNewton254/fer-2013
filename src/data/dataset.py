@@ -10,26 +10,33 @@ from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import pandas as pd
 import cv2
 import torchvision.transforms as T
+from src.config import get_config
 
-RAW_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
+CONFIG = get_config()
 
-BATCH_SIZE = 32
-NUM_WORKERS = 4
+RAW_DATA_DIR = Path(__file__).resolve().parents[2] / CONFIG["data"]["raw_data_dir"]
+
+BATCH_SIZE = CONFIG["dataloader"]["batch_size"]
+NUM_WORKERS = CONFIG["dataloader"]["num_workers"]
+
+IMAGE_SIZE = CONFIG["data"]["image_size"]
+NORM_MEAN = CONFIG["data"]["normalize"]["mean"]
+NORM_STD = CONFIG["data"]["normalize"]["std"]
 
 
 train_transform = T.Compose([
     T.ToPILImage(),
-    T.Resize((48, 48)),
+    T.Resize((IMAGE_SIZE, IMAGE_SIZE)),
     T.RandomHorizontalFlip(),
     T.ToTensor(),
-    T.Normalize(mean=[0.5], std=[0.5]),
+    T.Normalize(mean=NORM_MEAN, std=NORM_STD),
 ])
 
 val_test_transform = T.Compose([
     T.ToPILImage(),
-    T.Resize((48, 48)),
+    T.Resize((IMAGE_SIZE, IMAGE_SIZE)),
     T.ToTensor(),
-    T.Normalize(mean=[0.5], std=[0.5]),
+    T.Normalize(mean=NORM_MEAN, std=NORM_STD),
 ])
 
 
