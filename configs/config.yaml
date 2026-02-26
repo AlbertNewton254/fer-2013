@@ -7,6 +7,13 @@ data:
   normalize:
     mean: [0.5]
     std: [0.5]
+  augmentation:
+    horizontal_flip_p: 0.5
+    rotation_degrees: 12
+    affine_translate: [0.08, 0.08]
+    affine_scale: [0.92, 1.08]
+    brightness: 0.15
+    contrast: 0.15
 
 dataloader:
   batch_size: 32
@@ -20,6 +27,7 @@ loss:
     alpha: 1.0
     gamma: 2.0
     reduction: mean
+    class_balance_beta: 0.999
 
 training:
   epochs: 50

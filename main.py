@@ -7,6 +7,7 @@ Run from the project root: python main.py
 
 import torch
 import torch.optim as optim
+import pandas as pd
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from src.data import (
@@ -24,6 +25,23 @@ from src.config import get_config
 
 
 CONFIG = get_config()
+
+
+def get_effective_num_alpha(dataframe: pd.DataFrame, class_to_idx: dict[str, int], beta: float) -> torch.Tensor:
+    class_counts = dataframe["emotion"].value_counts().to_dict()
+    num_classes = len(class_to_idx)
+    alpha = torch.ones(num_classes, dtype=torch.float32)
+
+    for class_name, class_index in class_to_idx.items():
+        n_i = float(class_counts.get(class_name, 0))
+        if n_i <= 0:
+            alpha[class_index] = 1.0
+            continue
+        effective_num = 1.0 - (beta ** n_i)
+        alpha[class_index] = (1.0 - beta) / max(effective_num, 1e-12)
+
+    alpha = alpha / alpha.sum() * num_classes
+    return alpha
 
 
 def main():
@@ -46,7 +64,9 @@ def main():
     # 2. Model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = FER2013CNN().to(device)
-    criterion = FocalLoss()
+    beta = CONFIG["loss"]["focal"]["class_balance_beta"]
+    alpha = get_effective_num_alpha(train_dataset.data, train_dataset.class_to_idx, beta=beta)
+    criterion = FocalLoss(alpha=alpha)
     optimizer = optim.Adam(
         model.parameters(),
         lr=CONFIG["training"]["optimizer"]["lr"],

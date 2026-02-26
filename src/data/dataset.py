@@ -22,12 +22,23 @@ NUM_WORKERS = CONFIG["dataloader"]["num_workers"]
 IMAGE_SIZE = CONFIG["data"]["image_size"]
 NORM_MEAN = CONFIG["data"]["normalize"]["mean"]
 NORM_STD = CONFIG["data"]["normalize"]["std"]
+AUGMENTATION = CONFIG["data"]["augmentation"]
 
 
 train_transform = T.Compose([
     T.ToPILImage(),
     T.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    T.RandomHorizontalFlip(),
+    T.RandomHorizontalFlip(p=AUGMENTATION["horizontal_flip_p"]),
+    T.RandomRotation(degrees=AUGMENTATION["rotation_degrees"]),
+    T.RandomAffine(
+        degrees=0,
+        translate=tuple(AUGMENTATION["affine_translate"]),
+        scale=tuple(AUGMENTATION["affine_scale"]),
+    ),
+    T.ColorJitter(
+        brightness=AUGMENTATION["brightness"],
+        contrast=AUGMENTATION["contrast"],
+    ),
     T.ToTensor(),
     T.Normalize(mean=NORM_MEAN, std=NORM_STD),
 ])
