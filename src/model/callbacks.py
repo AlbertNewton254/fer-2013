@@ -115,6 +115,49 @@ class ModelCheckpoint(Callback):
                 )
 
 
+class PeriodicCheckpoint(Callback):
+    """
+    Saves model snapshots every N epochs.
+
+    Args:
+        dirpath (str | Path): Folder where checkpoints are saved.
+        every_n_epochs (int): Save frequency in epochs.
+        filename_pattern (str): Filename format with '{epoch}' placeholder.
+        verbose (bool): Print a message on each save. Default: True.
+    """
+
+    def __init__(
+        self,
+        dirpath: str | Path,
+        every_n_epochs: int = 10,
+        filename_pattern: str = "checkpoint_epoch_{epoch:04d}.pt",
+        verbose: bool = True,
+    ):
+        self.dirpath = Path(dirpath)
+        self.every_n_epochs = every_n_epochs
+        self.filename_pattern = filename_pattern
+        self.verbose = verbose
+        self._model = None
+
+    def set_model(self, model: torch.nn.Module) -> None:
+        self._model = model
+
+    def on_epoch_end(self, epoch: int, logs: dict) -> None:
+        if self._model is None or self.every_n_epochs <= 0:
+            return
+
+        current_epoch = epoch + 1
+        if current_epoch % self.every_n_epochs != 0:
+            return
+
+        self.dirpath.mkdir(parents=True, exist_ok=True)
+        filename = self.filename_pattern.format(epoch=current_epoch)
+        filepath = self.dirpath / filename
+        torch.save(self._model.state_dict(), filepath)
+        if self.verbose:
+            print(f"  PeriodicCheckpoint: epoch {current_epoch} saved → {filepath}")
+
+
 class LRSchedulerCallback(Callback):
     """
     Steps a PyTorch lr_scheduler at the end of each epoch.

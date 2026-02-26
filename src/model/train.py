@@ -10,6 +10,7 @@ from torch.amp import GradScaler, autocast
 from torch.utils.data import DataLoader
 
 from src.model.callbacks import Callback
+from src.model.eval import evaluate
 from src.config import get_config
 
 EPOCHS = get_config()["training"]["epochs"]
@@ -44,6 +45,7 @@ def train_one_epoch(model, dataloader: DataLoader, criterion, optimizer, device,
 def train(
     model,
     train_dataloader: DataLoader,
+    val_dataloader: DataLoader | None,
     criterion,
     optimizer,
     device,
@@ -51,6 +53,13 @@ def train(
     callbacks: list[Callback] | None = None,
 ):
     callbacks = callbacks or []
+    history = {
+        "epoch": [],
+        "loss": [],
+        "f1": [],
+        "val_loss": [],
+        "val_f1": [],
+    }
 
     # Give ModelCheckpoint a reference to the model
     for cb in callbacks:
@@ -62,12 +71,31 @@ def train(
 
     for epoch in range(epochs):
         loss, f1 = train_one_epoch(model, train_dataloader, criterion, optimizer, device, scaler)
-        print(f"Epoch {epoch + 1}/{epochs} — Loss: {loss:.4f}, F1: {f1:.4f}")
 
         logs = {"loss": loss, "f1": f1}
+        if val_dataloader is not None:
+            val_loss, val_f1 = evaluate(model, val_dataloader, criterion, device)
+            logs["val_loss"] = val_loss
+            logs["val_f1"] = val_f1
+            print(
+                f"Epoch {epoch + 1}/{epochs} — "
+                f"Loss: {loss:.4f}, F1: {f1:.4f}, "
+                f"Val Loss: {val_loss:.4f}, Val F1: {val_f1:.4f}"
+            )
+        else:
+            print(f"Epoch {epoch + 1}/{epochs} — Loss: {loss:.4f}, F1: {f1:.4f}")
+
+        history["epoch"].append(epoch + 1)
+        history["loss"].append(loss)
+        history["f1"].append(f1)
+        history["val_loss"].append(logs.get("val_loss"))
+        history["val_f1"].append(logs.get("val_f1"))
+
         for cb in callbacks:
             cb.on_epoch_end(epoch, logs)
 
         # EarlyStopping requested a stop
         if any(getattr(cb, "stop", False) for cb in callbacks):
             break
+
+    return history
