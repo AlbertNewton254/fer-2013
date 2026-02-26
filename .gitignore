@@ -17,3 +17,6 @@ ipython_config.py
 
 # Data directory
 data/*
+
+# Model checkpoints
+checkpoints*/
