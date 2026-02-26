@@ -18,10 +18,6 @@ def fetch_data() -> None:
 
         RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-        if (RAW_DATA_DIR / "fer2013.csv").exists():
-            print("Dataset already exists. Skipping download.")
-            return
-
         print(f"Downloading dataset {DATASET_NAME} from Kaggle...")
         kaggle.api.dataset_download_files(DATASET_NAME, path=RAW_DATA_DIR, unzip=True)
         print(f"Dataset saved to {RAW_DATA_DIR}")

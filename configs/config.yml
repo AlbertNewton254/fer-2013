@@ -1,0 +1,42 @@
+data:
+  raw_data_dir: data/raw
+  kaggle_dataset: msambare/fer2013
+  train_split: train
+  val_split: test
+  image_size: 48
+  normalize:
+    mean: [0.5]
+    std: [0.5]
+
+dataloader:
+  batch_size: 32
+  num_workers: 4
+
+model:
+  num_classes: 7
+
+loss:
+  focal:
+    alpha: 1.0
+    gamma: 2.0
+    reduction: mean
+
+training:
+  epochs: 50
+  optimizer:
+    lr: 0.001
+  scheduler:
+    mode: min
+    patience: 3
+    factor: 0.5
+
+callbacks:
+  monitor: loss
+  early_stopping:
+    patience: 5
+    min_delta: 0.0
+    mode: min
+  checkpoint:
+    filepath: checkpoints/best_model.pt
+    mode: min
+    verbose: true
