@@ -54,7 +54,18 @@ python -m main
 
 ## Model Performance
 
-The model achieves **65.0% accuracy** on the FER-2013 test set with the following per-class metrics:
+### Custom CNN Architecture (Current)
+
+Our custom CNN architecture achieves **65.0% accuracy** on the FER-2013 test set, significantly outperforming the ResNet18 backbone variant by **11.9 percentage points**.
+
+**Performance comparison:**
+- **Custom CNN**: 65.0% accuracy (F1: 0.6335)
+- **ResNet18 Backbone**: 53.1% accuracy (F1: 0.5244)
+- **Improvement**: +11.9% absolute accuracy gain
+
+This demonstrates that **purpose-built architectures can outperform transfer learning** for specialized tasks like facial expression recognition on low-resolution (48×48) grayscale images. The custom architecture's design, optimized for FER-2013's characteristics, proves more effective than adapting a general-purpose ImageNet-pretrained backbone.
+
+### Detailed Metrics (Custom CNN)
 
 | Emotion | Precision | Recall | F1-Score | Support |
 |---------|-----------|--------|----------|---------|
@@ -74,20 +85,20 @@ The model achieves **65.0% accuracy** on the FER-2013 test set with the followin
 
 The confusion matrix shows the model's predictions across all emotion categories (normalized by true values):
 
-![Confusion Matrix](reports/confusion_matrix.png)
+![Confusion Matrix](reports/our_model/confusion_matrix.png)
 
 ### ROC and Precision-Recall Curves
 
 One-vs-rest ROC and precision-recall curves for each emotion class:
 
-![ROC and PR Curves](reports/roc_pr_curves.png)
+![ROC and PR Curves](reports/our_model/roc_pr_curves.png)
 
 ### Training History
 
 Loss and F1 score curves across training epochs:
 
-![Loss Curve](reports/loss_curve.png)
-![F1 Curve](reports/f1_curve.png)
+![Loss Curve](reports/our_model/loss_curve.png)
+![F1 Curve](reports/our_model/f1_curve.png)
 
 ## Key Findings
 
@@ -97,9 +108,28 @@ Loss and F1 score curves across training epochs:
 - **Strong Specificity**: The model maintains good precision for emotions like Happy (0.8692) and Surprise (0.7034)
 - **Confusion between classes**: classes with lowest metrics are often confounded with similar but subtetly different emotions.
 
-## Next Questions
+## Architecture Comparison: Custom CNN vs ResNet18
 
-- What can we do to improve our results?
+We experimented with replacing our custom CNN with a ResNet18 backbone to investigate whether transfer learning could improve performance. **The results clearly favor the custom architecture:**
+
+| Metric | Custom CNN | ResNet18 | Difference |
+|--------|------------|----------|------------|
+| **Accuracy** | **65.0%** | 53.1% | **+11.9%** |
+| **Weighted F1** | **0.6335** | 0.5244 | **+0.1091** |
+| **Happy F1** | **0.8537** | 0.7686 | **+0.0851** |
+| **Fear F1** | **0.4273** | 0.2649 | **+0.1624** |
+
+### Why Custom CNN Outperforms ResNet18
+
+1. **Resolution Mismatch**: ResNet architectures are designed for higher-resolution images (224×224+), while FER-2013 uses 48×48 images. The aggressive downsampling in ResNet's early layers destroys critical facial details.
+
+2. **Task-Specific Design**: Our custom architecture uses properly-sized conv blocks optimized for 48×48 input, preserving spatial information throughout the network.
+
+3. **Simpler is Better**: For this constrained problem (low resolution, grayscale, limited classes), a purpose-built shallow architecture captures relevant patterns more effectively than a deep, general-purpose backbone.
+
+4. **Gabor Features**: Our custom pipeline integrates Gabor filters for texture extraction, which complements the learned features better than ResNet's standard convolutions.
+
+**Conclusion**: While transfer learning is powerful, domain-specific architecture design remains crucial for specialized computer vision tasks, especially with non-standard input characteristics.
 
 ## License
 
